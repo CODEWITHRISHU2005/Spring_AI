@@ -1,4 +1,4 @@
-package com.CodeWithRishu.Spring_AI;
+package com.CodeWithRishu.Spring_AI.config;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.ai.document.Document;
@@ -13,24 +13,16 @@ import java.util.List;
 
 @Component
 public class DataInitializer {
-    private final VectorStore vectorStore;
-
     @Autowired
-    public DataInitializer(VectorStore vectorStore) {
-        this.vectorStore = vectorStore;
-    }
+    private VectorStore vectorStore;
 
     @PostConstruct
     public void initData() {
         TextReader textReader = new TextReader(new ClassPathResource("product_details.txt"));
 
-        TokenTextSplitter splitter = new TokenTextSplitter(
-                100, 30, 5, 500, false
-        );
-
+        TokenTextSplitter splitter = new TokenTextSplitter(500, 30, 20, 500, false);
         List<Document> documents
                 = splitter.split(textReader.get());
         vectorStore.add(documents);
     }
-
 }
