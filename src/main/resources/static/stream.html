@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gemini-style Chat — Enhanced UX + Startup Animation</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+
+    <style>
+        :root {
+          --anim-ease: cubic-bezier(.2,.9,.2,1);
+          --sidebar-w: 18rem;
+          --accent: #2563eb; /* blue-600 */
+          --accent-light: #dbeafe;
+        }
+
+        /* Respect reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+          * { animation: none !important; transition: none !important; }
+        }
+
+        body {
+          background: linear-gradient(180deg,#f8fafc 0%, #ffffff 100%);
+          -webkit-font-smoothing:antialiased;
+          -moz-osx-font-smoothing:grayscale;
+          font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+          color: #0f172a;
+          height: 100vh;
+          margin: 0;
+        }
+
+        /* --- Startup animation base states --- */
+        .app-init .animate-start {
+          opacity: 0;
+          transform: translateY(8px) scale(.995);
+          transition: opacity .45s var(--anim-ease), transform .45s var(--anim-ease);
+        }
+        .app-init .sidebar { transform: translateX(-24px); opacity: 0; }
+        .app-init .history-item { opacity: 0; transform: translateY(8px); }
+        .app-init .greeting-card { opacity: 0; transform: scale(.98) translateY(6px); }
+        .app-init .floating-input { transform: translateY(18px) scale(.995); opacity: 0; }
+
+        .show { opacity: 1 !important; transform: none !important; }
+
+        .greeting-pop { transition: transform .48s var(--anim-ease), opacity .48s var(--anim-ease); }
+        .fade-in { animation: fadeIn .32s ease both; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+
+        .typing-dots span { display:inline-block; width:6px; height:6px; margin-right:4px; border-radius:999px; background:#9ca3af; opacity:0; animation: dot 1s infinite; }
+        .typing-dots span:nth-child(1){ animation-delay:0s }
+        .typing-dots span:nth-child(2){ animation-delay:.15s }
+        .typing-dots span:nth-child(3){ animation-delay:.3s }
+        @keyframes dot { 0%{opacity:0; transform: translateY(0)} 40%{opacity:1; transform: translateY(-4px)} 80%{opacity:0; transform: translateY(0)} 100%{opacity:0} }
+
+        /* === ENHANCED UI STYLING === */
+        .sidebar {
+          background: #ffffff;
+          border-right: 1px solid #e5e7eb;
+          box-shadow: 4px 0 12px rgba(0,0,0,0.04);
+          width: var(--sidebar-w);
+          min-width: 14rem;
+        }
+        .sidebar button,
+        .sidebar input {
+          transition: background .2s var(--anim-ease), transform .2s var(--anim-ease);
+        }
+        .sidebar button:hover {
+          background: #f9fafb;
+          transform: translateX(2px);
+        }
+
+        /* Logo wrapper */
+        .logo-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        .app-logo {
+          width: 44px;
+          height: 44px;
+          display: inline-block;
+          border-radius: 10px;
+          padding: 4px;
+          transition: transform .18s var(--anim-ease);
+        }
+        .app-logo:hover { transform: rotate(6deg) scale(1.02); }
+
+        .greeting-card {
+          background: white;
+          padding: 2rem 2.5rem;
+          border-radius: 1.25rem;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+        }
+
+        .message-row {
+          animation: bubbleIn .28s var(--anim-ease) both;
+        }
+        @keyframes bubbleIn {
+          from { opacity: 0; transform: scale(.97) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .msg-user {
+          background: var(--accent-light);
+          color: #0f172a;
+          border-radius: 1rem 1rem 0 1rem;
+          margin-left: auto;
+        }
+        .msg-bot {
+          background: #ffffff;
+          border-radius: 1rem 1rem 1rem 0;
+          box-shadow: 0 4px 14px rgba(16,24,40,0.05);
+          margin-right: auto;
+        }
+
+        .floating-input {
+          background: rgba(255,255,255,0.85);
+          backdrop-filter: blur(8px);
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+          transition: box-shadow .2s var(--anim-ease);
+          width: 100%;
+        }
+        .floating-input:focus-within {
+          box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+
+        #send-btn {
+          background: var(--accent);
+          transition: background .2s var(--anim-ease), transform .15s var(--anim-ease);
+        }
+        #send-btn:hover {
+          background: #1e40af;
+          transform: translateY(-1px);
+        }
+
+        .history-item {
+          background: transparent;
+          border: 1px solid transparent;
+          width: 100%;
+          text-align: left;
+        }
+        .history-item.active {
+          background: var(--accent-light);
+          border-color: var(--accent-light);
+        }
+
+        /* Subtle helper classes */
+        .muted { color: #6b7280; }
+        .small { font-size: 12px; }
+
+        /* Scrollbars (subtle) */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Responsive tweaks */
+        @media (max-width: 880px) {
+          .sidebar { display: none; }
+          .floating-input { width: calc(100% - 16px); }
+        }
+    </style>
+</head>
+
+<body class="app-init flex h-screen">
+
+<!-- Sidebar -->
+<aside class="sidebar flex flex-col p-0 animate-start" data-animate="sidebar">
+    <div class="p-4 border-b border-gray-100">
+        <div class="flex items-center justify-between">
+            <!-- Logo only (no text) -->
+            <div class="logo-wrap" aria-hidden="false">
+                <!-- Inline SVG logo inspired by ChatGPT aesthetic (abstract knot/swirl) -->
+                <div class="app-logo" title="Chat logo" role="img" aria-label="Chat logo">
+                    <svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                        <defs>
+                            <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+                                <stop offset="0" stop-color="#10B981"/>
+                                <stop offset="1" stop-color="#06B6D4"/>
+                            </linearGradient>
+                        </defs>
+                        <rect rx="10" width="64" height="64" fill="url(#g1)" opacity="0.08"></rect>
+                        <g transform="translate(8,8) scale(0.75)">
+                            <path d="M24 2c6 0 10 4 10 10s-4 10-10 10-10-4-10-10 4-10 10-10z" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M4 26c0-6 4-10 10-10s10 4 10 10-4 10-10 10S4 32 4 26z" fill="none" stroke="#0ea5a4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M24 50c-6 0-10-4-10-10s4-10 10-10 10 4 10 10-4 10-10 10z" fill="none" stroke="#0891b2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M44 26c0 6-4 10-10 10s-10-4-10-10 4-10 10-10 10 4 10 10z" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <button id="new-chat-btn" class="ml-2 px-3 py-1 text-white rounded-md text-sm" style="background:var(--accent)" aria-label="New chat">+ New</button>
+        </div>
+    </div>
+
+    <div class="p-3">
+        <input id="history-search" placeholder="Search chats..." class="w-full p-2 rounded-md border border-gray-200 text-sm" />
+    </div>
+
+    <div id="chat-history" class="flex-1 overflow-auto px-2 py-2 space-y-2"></div>
+
+    <div class="p-3 border-t border-gray-100">
+        <div class="flex items-center justify-between text-sm muted">
+            <div>Saved locally</div>
+            <button id="clear-history" class="text-red-500 hover:underline">Clear</button>
+        </div>
+    </div>
+</aside>
+
+<!-- Main area -->
+<main class="flex-1 flex flex-col relative">
+    <div id="center-area" class="flex-1 overflow-auto">
+        <div id="greeting" class="h-full flex items-center justify-center px-6">
+            <div class="max-w-2xl text-center greeting-card greeting-pop animate-start" data-animate="greeting">
+                <h2 class="text-3xl font-bold">Hello, Rishabh</h2>
+                <p class="mt-2 muted">Ask anything — code, explanations, help or ideas. Messages stream in like Gemini.</p>
+            </div>
+        </div>
+
+        <div id="chat-container" class="hidden max-w-3xl mx-auto px-6 py-8 space-y-4"></div>
+    </div>
+
+    <div class="absolute left-1/2 -translate-x-1/2 bottom-6 w-[92%] max-w-3xl">
+        <form id="chat-form" class="flex items-end gap-3 rounded-full px-4 py-3 floating-input animate-start" data-animate="input" autocomplete="off">
+            <textarea id="message-input" rows="1" placeholder="Type a message — Enter to send, Shift+Enter for newline" class="flex-1 resize-none bg-transparent outline-none text-sm max-h-40" required></textarea>
+            <div class="flex items-center space-x-2">
+                <button type="button" id="stop-btn" class="hidden p-2 rounded-md text-gray-500 hover:bg-gray-100">⏹</button>
+                <button type="submit" id="send-btn" class="px-4 py-2 text-white rounded-md">Send</button>
+            </div>
+        </form>
+    </div>
+</main>
+
+<!-- SCRIPT: UX + streaming + persistence + startup animation -->
+<script>
+    (function () {
+      /* ---------- Simple local chat app logic ---------- */
+      const STORAGE_KEY = 'gemini_chat_v1';
+      let chats = loadChats();
+      let activeChatId = null;
+      let currentStreamController = null;
+
+      // DOM
+      const historyEl = document.getElementById('chat-history');
+      const newChatBtn = document.getElementById('new-chat-btn');
+      const clearHistoryBtn = document.getElementById('clear-history');
+      const greeting = document.getElementById('greeting');
+      const chatContainer = document.getElementById('chat-container');
+      const chatForm = document.getElementById('chat-form');
+      const messageInput = document.getElementById('message-input');
+      const sendBtn = document.getElementById('send-btn');
+      const stopBtn = document.getElementById('stop-btn');
+      const historySearch = document.getElementById('history-search');
+
+      // init
+      renderHistory();
+      if (chats.length) { setActiveChat(chats[0].id); }
+
+      // helpers
+      function uid(){ return Math.random().toString(36).slice(2,9); }
+      function nowISO(){ return new Date().toISOString(); }
+      function saveChats(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); }
+      function loadChats(){ try{ const r=localStorage.getItem(STORAGE_KEY); return r?JSON.parse(r):[] }catch(e){return[]} }
+
+      // render history
+      function renderHistory(filter='') {
+        historyEl.innerHTML = '';
+        const sorted = [...chats].reverse();
+        sorted.forEach(chat=>{
+          if (filter && !chat.title.toLowerCase().includes(filter.toLowerCase())) return;
+          const btn = document.createElement('button');
+          btn.type='button';
+          btn.className='history-item p-3 rounded-md flex flex-col transition';
+          btn.title = chat.title || 'Chat';
+          btn.datasetId = chat.id;
+          const preview = chat.messages.length ? previewText(chat.messages) : 'No messages yet';
+          btn.innerHTML = `<div class="font-medium text-sm">${escapeHtml(chat.title)}</div>
+                           <div class="text-xs muted truncate">${escapeHtml(preview)}</div>`;
+          btn.addEventListener('click', ()=> setActiveChat(chat.id));
+          if (chat.id === activeChatId) btn.classList.add('active');
+          historyEl.appendChild(btn);
+        });
+        // add small staggered show classes
+        Array.from(historyEl.children).forEach((child, i) => {
+          child.classList.add('animate-start');
+          setTimeout(()=> child.classList.add('show'), 300 + i*60);
+        });
+      }
+
+      function previewText(messages){ const last = messages[messages.length-1]; return last ? (last.role==='user' ? 'You: ' : '') + (last.content||'').slice(0,80) : ''; }
+
+      function setActiveChat(id) {
+        activeChatId = id;
+        const chat = chats.find(c=>c.id===id);
+        if(!chat) return;
+        greeting.classList.add('hidden');
+        chatContainer.classList.remove('hidden');
+        renderMessages(chat);
+        renderHistory(historySearch.value);
+      }
+
+      function renderMessages(chat){
+        chatContainer.innerHTML = '';
+        chat.messages.forEach(msg => chatContainer.appendChild(createMessageRow(msg)));
+        scrollToBottom();
+        Prism.highlightAllUnder(chatContainer);
+      }
+
+      function createMessageRow(msg){
+        const wrapper = document.createElement('div');
+        wrapper.className='message-row flex flex-col space-y-2';
+        const bubble = document.createElement('div');
+        bubble.className = `rounded-2xl p-3 max-w-[80%] text-sm ${msg.role==='user' ? 'self-end msg-user' : 'self-start msg-bot'}`;
+        const time = msg.ts ? new Date(msg.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+        bubble.innerHTML = `<div class="message-content break-words">${renderContent(msg.content||'')}</div>
+                            <div class="mt-1 text-[11px] muted flex items-center justify-end gap-2">
+                              <span>${time}</span>
+                              ${msg.status==='sending' ? '<span class="text-xs muted">sending…</span>':''}
+                            </div>`;
+        wrapper.appendChild(bubble);
+        return wrapper;
+      }
+
+      function renderContent(raw){
+        if (!raw) return '';
+        const codeBlockRegex = /```([\s\S]*?)```/g;
+        let html = escapeHtml(raw).replace(/\n/g,'<br>');
+        html = html.replace(codeBlockRegex, (_, code)=> {
+          const escaped = escapeHtml(code);
+          return `<pre class="my-2 rounded-md"><code class="language-none">${escaped}</code></pre>`;
+        });
+        html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a class="text-blue-600 underline" href="$1" target="_blank" rel="noreferrer">$1</a>');
+        return html;
+      }
+
+      function escapeHtml(str){ if(typeof str !== 'string') return ''; return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+      function getActiveChat(){ return chats.find(c=>c.id===activeChatId); }
+      function appendMessageToActive(role, content, opts={}) {
+        let chat = getActiveChat();
+        if(!chat){
+          chat = createNewChat('Chat');
+          setActiveChat(chat.id);
+        }
+        const msg = { id: uid(), role, content, ts: nowISO(), status: opts.status||'sent' };
+        chat.messages.push(msg); saveChats();
+        const row = createMessageRow(msg); chatContainer.appendChild(row); scrollToBottom(); Prism.highlightAllUnder(chatContainer);
+        return msg;
+      }
+      function updateMessageContent(messageId, newContent, status) {
+        const chat = getActiveChat(); if(!chat) return;
+        const msg = chat.messages.find(m=>m.id===messageId); if(!msg) return;
+        msg.content = newContent; if(status) msg.status = status; saveChats(); renderMessages(chat);
+      }
+      function scrollToBottom(){ requestAnimationFrame(()=> chatContainer.scrollTop = chatContainer.scrollHeight); }
+
+      // Textarea auto-resize
+      function autoResizeTextarea(){ messageInput.style.height='auto'; messageInput.style.height = Math.min(messageInput.scrollHeight,240) + 'px'; }
+      messageInput.addEventListener('input', autoResizeTextarea);
+
+      // Send & stream
+      chatForm.addEventListener('submit', async (e)=> {
+        e.preventDefault();
+        if(!messageInput.value.trim()) return;
+        if(!activeChatId){ createNewChat(); }
+        const userText = messageInput.value.trim(); messageInput.value=''; autoResizeTextarea();
+        appendMessageToActive('user', userText, { status: 'sent' });
+        const botPlaceholder = appendMessageToActive('bot','',{ status: 'sending' }); const botMessageId = botPlaceholder.id;
+        try {
+          sendBtn.disabled = true; stopBtn.classList.remove('hidden');
+          await streamBotResponse(userText, botMessageId);
+        } catch (err) {
+          updateMessageContent(botMessageId, '⚠️ Error: ' + (err.message||'Failed to fetch'), 'error');
+        } finally {
+          sendBtn.disabled = false; stopBtn.classList.add('hidden');
+        }
+      });
+
+      // Enter handling
+      messageInput.addEventListener('keydown', (e)=> {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); }
+      });
+
+      // Stop streaming button
+      stopBtn.addEventListener('click', ()=> {
+        if(currentStreamController){ currentStreamController.abort(); currentStreamController = null; stopBtn.classList.add('hidden'); sendBtn.disabled=false; }
+      });
+
+      // Example streaming function that expects a streaming/text response.
+      // NOTE: If your /stream endpoint returns HTML error pages, you might see unrelated errors.
+      async function streamBotResponse(userText, botMessageId){
+        const url = '/stream?message=' + encodeURIComponent(userText);
+        const controller = new AbortController(); currentStreamController = controller;
+        const resp = await fetch(url, { signal: controller.signal });
+        if(!resp.ok) {
+          const contentType = resp.headers.get('content-type') || '';
+          if (contentType.includes('text/html')) {
+            const bodyText = await resp.text();
+            throw new Error('Server returned HTML (check /stream endpoint). Status: ' + resp.status);
+          }
+          throw new Error('Server returned ' + resp.status);
+        }
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let collected = '';
+        updateMessageContent(botMessageId, '', 'sending');
+        while(true) {
+          const { done, value } = await reader.read();
+          if(done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          collected += chunk;
+          updateMessageContent(botMessageId, collected, 'sending');
+          Prism.highlightAllUnder(chatContainer);
+          scrollToBottom();
+        }
+        updateMessageContent(botMessageId, collected, 'sent');
+        currentStreamController = null;
+      }
+
+      // New chat, edit title
+      function createNewChat(title=null){
+        const id = uid(); const newChat = { id, title: title||('Chat ' + (chats.length+1)), messages: [] };
+        chats.push(newChat); saveChats(); setActiveChat(id); renderHistory();
+        setTimeout(()=> {
+          try { const newTitle = prompt('Rename chat', newChat.title); if(newTitle !== null && newTitle.trim()){ newChat.title = newTitle.trim(); saveChats(); renderHistory(historySearch.value); } } catch(e){}
+        }, 120);
+        return newChat;
+      }
+
+      function editChatTitle(chatId){ const chat = chats.find(c=>c.id===chatId); if(!chat) return; const newTitle = prompt('Rename chat', chat.title); if(newTitle !== null && newTitle.trim()){ chat.title = newTitle.trim(); saveChats(); renderHistory(historySearch.value); } }
+
+      // Controls
+      clearHistoryBtn.addEventListener('click', ()=>{ if(!confirm('Clear all saved chats?')) return; chats=[]; activeChatId=null; saveChats(); renderHistory(); chatContainer.innerHTML=''; greeting.classList.remove('hidden'); chatContainer.classList.add('hidden'); });
+      newChatBtn.addEventListener('click', ()=> createNewChat());
+      historySearch.addEventListener('input', ()=> renderHistory(historySearch.value));
+
+      // Seed welcome chat if none
+      if(!chats.length){
+        const c = createNewChat('Welcome');
+        setActiveChat(c.id);
+        appendMessageToActive('bot','Hi — I am your assistant. Ask me anything!', { status:'sent' });
+      }
+
+      // ---------- STARTUP ANIMATION SEQUENCER ----------
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(playStartupSequence, 120);
+      });
+
+      function playStartupSequence(){
+        const body = document.body;
+        // sidebar
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+          setTimeout(()=> sidebar.classList.add('show'), 40);
+        }
+
+        // greeting card
+        const greetingCard = document.querySelector('[data-animate="greeting"]');
+        if (greetingCard) setTimeout(()=> greetingCard.classList.add('show'), 220);
+
+        // input
+        const inputEl = document.querySelector('[data-animate="input"]');
+        setTimeout(()=> {
+          if (inputEl) inputEl.classList.add('show');
+        }, 560);
+
+        // finally remove app-init marker to allow normal transitions
+        setTimeout(()=> body.classList.remove('app-init'), 900);
+      }
+
+      // small accessibility: expose helpful window error print for debugging
+      window.addEventListener('error', (ev) => {
+        console.debug('Window error captured:', ev.message);
+      });
+
+    })();
+</script>
+</body>
+</html>
