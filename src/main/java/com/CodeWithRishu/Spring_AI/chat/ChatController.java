@@ -3,7 +3,6 @@ package com.CodeWithRishu.Spring_AI.chat;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +19,6 @@ public class ChatController {
     @Value("classpath:sample-image.jpg")
     private Resource sampleImage;
 
-    @Autowired
     public ChatController(ChatClient.Builder chatClientBuilder,
                           ChatMemory chatMemory) {
         this.chatClient = chatClientBuilder

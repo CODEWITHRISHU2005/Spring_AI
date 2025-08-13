@@ -1,5 +1,6 @@
 package com.CodeWithRishu.Spring_AI.audio;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.ai.openai.OpenAiAudioSpeechOptions;
 import org.springframework.ai.openai.api.OpenAiAudioApi;
@@ -12,13 +13,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequiredArgsConstructor
 public class AudioGeneration {
 
     private final OpenAiAudioSpeechModel audioSpeechModel;
-
-    public AudioGeneration(OpenAiAudioSpeechModel audioSpeechModel) {
-        this.audioSpeechModel = audioSpeechModel;
-    }
 
     @GetMapping("/speak")
     public ResponseEntity<byte[]> generateSpeech(

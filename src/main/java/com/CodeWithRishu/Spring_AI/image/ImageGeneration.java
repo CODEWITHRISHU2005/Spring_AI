@@ -1,5 +1,6 @@
 package com.CodeWithRishu.Spring_AI.image;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.image.ImageOptions;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
@@ -13,13 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
+@RequiredArgsConstructor
 public class ImageGeneration {
 
     private final OpenAiImageModel imageModel;
-
-    public ImageGeneration(OpenAiImageModel imageModel) {
-        this.imageModel = imageModel;
-    }
 
     @GetMapping("/generate-image")
     public ResponseEntity<Map<String, String>> generateImage(
